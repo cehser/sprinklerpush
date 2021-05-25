@@ -1,6 +1,6 @@
 import requests
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date, time
 from pathlib import Path
 # ospri_base = 'http://192.168.29.137'
 
@@ -47,7 +47,11 @@ programs 	= r_all.json()['programs']['pd']
 logs = r_logs.json()
 mapped_logs = list(map(lambda event : {'program': 'manuell' if event[0] == 99 else programs[event[0]-1][5], 'station':snames[event[1]], 'duration':timedelta(seconds=event[2]), 'start':datetime.utcfromtimestamp(event[3] - event[2])}, logs))
 
-waterLevelMessage(water_level)
+
+check_wl_time = time.fromisoformat(config['script']['check_wl_time'])
+
+if(abs((datetime.combine(date.today(), check_wl_time)-datetime.now()).total_seconds()) < config["script"]["check_interval"]):
+  waterLevelMessage(water_level)
 
 for log in mapped_logs:
   if ((datetime.now() - log["start"]).total_seconds() < config["script"]["check_interval"]):
