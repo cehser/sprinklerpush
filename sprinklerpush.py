@@ -1,14 +1,13 @@
 import requests
 import json
 from datetime import datetime, timedelta
+from pathlib import Path
 # ospri_base = 'http://192.168.29.137'
 
-
-# read file
-with open('config.json', 'r') as myfile:
+# read and parse config file
+p = Path(__file__).with_name('config.json')
+with p.open('r') as myfile:
   data=myfile.read()
-
-# parse file
 config = json.loads(data)
 
 # OpenSprinker API endpoints
