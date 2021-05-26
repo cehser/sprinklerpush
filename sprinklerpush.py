@@ -54,5 +54,5 @@ if(abs((datetime.combine(date.today(), check_wl_time)-datetime.now()).total_seco
   waterLevelMessage(water_level)
 
 for log in mapped_logs:
-  if ((datetime.now() - log["start"]).total_seconds() < config["script"]["check_interval"]):
+  if ((datetime.now() - log['start'] - log['duration']).total_seconds() < config["script"]["check_interval"]):
     logMessage(log)
