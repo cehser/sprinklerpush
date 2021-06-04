@@ -6,5 +6,7 @@ services:
       - ./config:/code/config
     depends_on:
       - redis
+    environment:
+      - TZ=Europe/Berlin
   redis:
     image: "redis:alpine"
