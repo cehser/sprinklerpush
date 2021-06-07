@@ -7,16 +7,13 @@ from datetime import datetime, timedelta, date, time
 from pathlib import Path
 from funcy import omit
 
-logging.basicConfig(level=logging.DEBUG)
-
-# ospri_base = 'http://192.168.29.137'
-
 # read and parse config file
-# p = Path(__file__).parent.joinpath('..', 'config', 'config.json')
 p = Path(__file__).parent.joinpath('config', 'config.json')
 with p.open('r') as myfile:
   data=myfile.read()
 config = json.loads(data)
+
+logging.basicConfig(level=logging.getLevelName(config["script"]["loglevel"]))
 
 # OpenSprinker API endpoints
 ospri_logs = f'/jl?pw={config["opensprinkler"]["pw"]}'
