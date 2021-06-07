@@ -15,7 +15,9 @@ config = json.loads(data)
 
 loglevel = config["script"]["loglevel"]
 print(f"LOG LEVEL: {loglevel}")
-logging.basicConfig(level=logging.getLevelName(loglevel))
+logging.basicConfig(level=logging.getLevelName(loglevel),
+                    format='%(asctime)s %(levelname)-8s %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S')
 
 # OpenSprinker API endpoints
 ospri_logs = f'/jl?pw={config["opensprinkler"]["pw"]}'
