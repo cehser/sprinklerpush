@@ -13,7 +13,9 @@ with p.open('r') as myfile:
   data=myfile.read()
 config = json.loads(data)
 
-logging.basicConfig(level=logging.getLevelName(config["script"]["loglevel"]))
+loglevel = config["script"]["loglevel"]
+print(f"LOG LEVEL: {loglevel}")
+logging.basicConfig(level=logging.getLevelName(loglevel))
 
 # OpenSprinker API endpoints
 ospri_logs = f'/jl?pw={config["opensprinkler"]["pw"]}'

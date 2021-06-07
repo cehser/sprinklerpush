@@ -16,7 +16,7 @@
   },
   "script": {
     "check_interval": 600,
-    "check_wl_time": "05:30:00"
+    "check_wl_time": "05:30:00",
     "loglevel": "DEBUG"
   }
 }
