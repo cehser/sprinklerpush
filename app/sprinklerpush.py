@@ -69,69 +69,70 @@ def json_serial(obj):
 cache = redis.Redis(host=config['redis']['host'], port=config['redis']['port'])
 
 while True:
-  # get data from opensprinkler
-  
-  r_logs = requests.get(f'{config["opensprinkler"]["base_uri"]}{ospri_logs}&hist=1')
-  r_all  = requests.get(f'{config["opensprinkler"]["base_uri"]}{ospri_all}')
+  try:  
+    # get data from opensprinkler 
+    r_logs = requests.get(f'{config["opensprinkler"]["base_uri"]}{ospri_logs}&hist=1')
+    r_all  = requests.get(f'{config["opensprinkler"]["base_uri"]}{ospri_all}')
 
-  logs        = r_logs.json()
-  water_level = r_all.json()['options']['wl']
-  snames		  = r_all.json()['stations']['snames']
-  programs 	  = r_all.json()['programs']['pd']
-  status      = r_all.json()['settings']['ps']
-  sbits       = r_all.json()['settings']['sbits']
-  now         = datetime.utcfromtimestamp(r_all.json()['settings']['devt']) # device time needed to calculate total duration based on time left
+    logs        = r_logs.json()
+    water_level = r_all.json()['options']['wl']
+    snames		  = r_all.json()['stations']['snames']
+    programs 	  = r_all.json()['programs']['pd']
+    status      = r_all.json()['settings']['ps']
+    sbits       = r_all.json()['settings']['sbits']
+    now         = datetime.utcfromtimestamp(r_all.json()['settings']['devt']) # device time needed to calculate total duration based on time left
 
-  # map logs to be better processible
-  mapped_logs = list(map(lambda event : {'program': 'manuell' if event[0] == 99 else programs[event[0]-1][5], 'station':snames[event[1]], 'duration':timedelta(seconds=event[2]), 'end':datetime.utcfromtimestamp(event[3])}, logs))
+    # map logs to be better processible
+    mapped_logs = list(map(lambda event : {'program': 'manuell' if event[0] == 99 else programs[event[0]-1][5], 'station':snames[event[1]], 'duration':timedelta(seconds=event[2]), 'end':datetime.utcfromtimestamp(event[3])}, logs))
 
 
-  mapped_status = [
-    {
-      'station': snames[i], 
-      'status': { 
-        'running': (1<<i)&sbits[0]>0, # i-th bit is 1 iff station is active
-        'program': 'manuell' if prog == 99 else programs[prog-1][5], 
-        'start':datetime.utcfromtimestamp(start),  
-        'left':timedelta(seconds=int(left)),
-        'duration': now - datetime.utcfromtimestamp(int(start - left))
-      }
-    } for i,[prog,left,start] in enumerate(status)
-  ]
+    mapped_status = [
+      {
+        'station': snames[i], 
+        'status': { 
+          'running': (1<<i)&sbits[0]>0, # i-th bit is 1 iff station is active
+          'program': 'manuell' if prog == 99 else programs[prog-1][5], 
+          'start':datetime.utcfromtimestamp(start),  
+          'left':timedelta(seconds=int(left)),
+          'duration': now - datetime.utcfromtimestamp(int(start - left))
+        }
+      } for i,[prog,left,start] in enumerate(status)
+    ]
 
-  cache.set('wl', water_level)
+    cache.set('wl', water_level)
 
-  # push water level message when configured time has passed and was not yet pushed today
-  check_wl_time = time.fromisoformat(config['script']['check_wl_time'])
-  last_wl_push = cache.get('last_wl_push')
-  if((datetime.combine(date.today(), check_wl_time)-datetime.now()).total_seconds() < 0 and last_wl_push != date.today().isoformat().encode()):
-    waterLevelMessage(water_level)
-    cache.set('last_wl_push', date.today().isoformat())
+    # push water level message when configured time has passed and was not yet pushed today
+    check_wl_time = time.fromisoformat(config['script']['check_wl_time'])
+    last_wl_push = cache.get('last_wl_push')
+    if((datetime.combine(date.today(), check_wl_time)-datetime.now()).total_seconds() < 0 and last_wl_push != date.today().isoformat().encode()):
+      waterLevelMessage(water_level)
+      cache.set('last_wl_push', date.today().isoformat())
 
-  # push new log messages only
-  for log in mapped_logs:
-    key = 'log:' + log['end'].date().isoformat()
-    value = json.dumps(log, default=json_serial)
+    # push new log messages only
+    for log in mapped_logs:
+      key = 'log:' + log['end'].date().isoformat()
+      value = json.dumps(log, default=json_serial)
 
-    if(cache.sismember(key, value)):
-      logging.debug(f'already pushed log message {value}')
-    else: 
-      logMessage(log, water_level)
-      cache.sadd(key, value)
-    cache.expire(key, 172800)
+      if(cache.sismember(key, value)):
+        logging.debug(f'already pushed log message {value}')
+      else: 
+        logMessage(log, water_level)
+        cache.sadd(key, value)
+      cache.expire(key, 172800)
 
-  # push new status messages only
-  for status in mapped_status:
-    logging.info('status: ' + json.dumps(status, default=json_serial))
-    key = 'status:' + status['station']
-    #remove time left and duration
-    value = json.dumps({'station':status['station'], 'status':omit(status['status'],('left', 'duration'))}, default=json_serial)
-    if(status['status']['running'] and cache.get(key) != value.encode()):
-      logging.debug (f'pushing status message {value}') 
-      statusMessage(status, water_level)
-      cache.set(key, value)
-    else:
-      logging.debug(f'not pushing status message {value}') 
-      
+    # push new status messages only
+    for status in mapped_status:
+      logging.info('status: ' + json.dumps(status, default=json_serial))
+      key = 'status:' + status['station']
+      #remove time left and duration
+      value = json.dumps({'station':status['station'], 'status':omit(status['status'],('left', 'duration'))}, default=json_serial)
+      if(status['status']['running'] and cache.get(key) != value.encode()):
+        logging.debug (f'pushing status message {value}') 
+        statusMessage(status, water_level)
+        cache.set(key, value)
+      else:
+        logging.debug(f'not pushing status message {value}') 
+  except Exception as ex:
+    logging.error(f'An Exception ({type(ex).__name__}) occurred: {str(ex)}')     
 
   pause.seconds(config['script']['check_interval'])
