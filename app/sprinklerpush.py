@@ -110,12 +110,14 @@ while True:
 
     # push new log messages only
     for log in mapped_logs:
+      logging.info('log: ' + json.dumps(log, default=json_serial))
       key = 'log:' + log['end'].date().isoformat()
       value = json.dumps(log, default=json_serial)
 
       if(cache.sismember(key, value)):
-        logging.debug(f'already pushed log message {value}')
+        logging.debug(f'not pushing log message {value}')
       else: 
+        logging.debug(f'pushing log message {value}')
         logMessage(log, water_level)
         cache.sadd(key, value)
       cache.expire(key, 172800)
