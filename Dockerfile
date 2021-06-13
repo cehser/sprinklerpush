@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM python:3.9-alpine
+FROM python:3.10-rc-alpine
 # make container tz capable. 
 # to make use of this just set environment variable TZ to appropriate value like "America/New York"
 RUN apk add tzdata

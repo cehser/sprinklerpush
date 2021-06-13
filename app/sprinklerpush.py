@@ -66,6 +66,12 @@ def json_serial(obj):
     return obj.total_seconds()
   raise TypeError ("Type %s not serializable" % type(obj))
 
+def program_name(programs, prog_num):
+  match prog_num:
+    case 99: return 'manuell'
+    case 254: return 'Ad-hoc'
+    case _: return programs[prog_num-1][5]
+
 cache = redis.Redis(host=config['redis']['host'], port=config['redis']['port'])
 
 while True:
@@ -73,6 +79,9 @@ while True:
     # get data from opensprinkler 
     r_logs = requests.get(f'{config["opensprinkler"]["base_uri"]}{ospri_logs}&hist=1')
     r_all  = requests.get(f'{config["opensprinkler"]["base_uri"]}{ospri_all}')
+
+    logging.debug(f'r_logs: {r_logs.json()}')
+    logging.debug(f'r_all: {r_all.json()}')
 
     logs        = r_logs.json()
     water_level = r_all.json()['options']['wl']
@@ -83,7 +92,7 @@ while True:
     now         = datetime.utcfromtimestamp(r_all.json()['settings']['devt']) # device time needed to calculate total duration based on time left
 
     # map logs to be better processible
-    mapped_logs = list(map(lambda event : {'program': 'manuell' if event[0] == 99 else programs[event[0]-1][5], 'station':snames[event[1]], 'duration':timedelta(seconds=event[2]), 'end':datetime.utcfromtimestamp(event[3])}, logs))
+    mapped_logs = list(map(lambda event : {'program': program_name(programs, event[0]), 'station':snames[event[1]], 'duration':timedelta(seconds=event[2]), 'end':datetime.utcfromtimestamp(event[3])}, logs))
 
 
     mapped_status = [
@@ -91,7 +100,7 @@ while True:
         'station': snames[i], 
         'status': { 
           'running': (1<<i)&sbits[0]>0, # i-th bit is 1 iff station is active
-          'program': 'manuell' if prog == 99 else programs[prog-1][5], 
+          'program': program_name(programs, prog),
           'start':datetime.utcfromtimestamp(start),  
           'left':timedelta(seconds=int(left)),
           'duration': now - datetime.utcfromtimestamp(int(start - left))
