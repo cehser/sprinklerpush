@@ -23,7 +23,8 @@ logging.basicConfig(level=logging.getLevelName(loglevel),
 ospri_logs = f'/jl?pw={config["opensprinkler"]["pw"]}'
 ospri_all  = f'/ja?pw={config["opensprinkler"]["pw"]}'
 
-def pushMessage(title, message, timestamp=datetime.now().timestamp()):
+def pushMessage(title, message, timestamp=None):
+  timestamp = timestamp if timestamp is not None else datetime.now().timestamp()
   data = {'token':config['pushover']['apptoken'], 
     'user':config['pushover']['userkey'], 
     'html':1, 
